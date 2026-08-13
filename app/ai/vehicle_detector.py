@@ -1,12 +1,56 @@
 from ultralytics import YOLO
-import easyocr
 import cv2
+import sqlite3
+from datetime import datetime
 
-model = YOLO("runs/detect/train-4/weights/best.pt")
+model = YOLO("runs/detect/train/weights/best.pt")
 
-ocr = easyocr.Reader(['en'])
+DB_PATH = "data/smart_gat.db"
+
+
+def init_database():
+    connection = sqlite3.connect(DB_PATH)
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS detections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tracking_id INTEGER,
+            plate TEXT,
+            confidence REAL,
+            detected_at TEXT
+        )
+    """)
+
+    connection.commit()
+    connection.close()
+
+
+def save_detection(tracking_id, plate, confidence):
+
+    connection = sqlite3.connect(DB_PATH)
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        INSERT INTO detections
+        (tracking_id, plate, confidence, detected_at)
+        VALUES (?, ?, ?, ?)
+    """, (
+        tracking_id,
+        plate,
+        confidence,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
+
+    connection.commit()
+    connection.close()
+
 
 def start_detection():
+
+    init_database()
 
     video = cv2.VideoCapture("video/video3.MOV")
 
@@ -22,13 +66,25 @@ def start_detection():
             print("Fim do vídeo")
             break
 
-        results = model(frame)
+        results = model.track(
+            frame,
+            conf=0.05,
+            imgsz=640,
+            persist=True,
+            tracker="bytetrack.yaml",
+            verbose=False
+        )
 
         for result in results:
 
-            boxes = result.boxes
+            for box in result.boxes:
 
-            for box in boxes:
+                if box.id is not None:
+                    track_id = int(box.id[0])
+                else:
+                    track_id = -1
+
+                confidence = float(box.conf[0])
 
                 x1, y1, x2, y2 = map(
                     int,
@@ -40,22 +96,7 @@ def start_detection():
                 if plate.size == 0:
                     continue
 
-                plate = cv2.resize(
-                    plate,
-                    None,
-                    fx=2,
-                    fy=2
-                )
-
-                ocr_result = ocr.readtext(plate)
-
-                text = ""
-
-                if len(ocr_result) > 0:
-
-                    text = ocr_result[0][1]
-
-                    print("Placa:", text)
+                # Aqui entra o OCR depois
 
                 cv2.rectangle(
                     frame,
@@ -67,16 +108,16 @@ def start_detection():
 
                 cv2.putText(
                     frame,
-                    text,
-                    (x1, y1 - 10),
+                    f"ID: {track_id} | {confidence:.2f}",
+                    (x1, max(y1 - 10, 30)),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
+                    0.7,
                     (0, 255, 0),
                     2
                 )
 
         cv2.imshow(
-            "AI Detection",
+            "Smart GAT - Tracking",
             frame
         )
 
@@ -84,5 +125,8 @@ def start_detection():
             break
 
     video.release()
-
     cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    start_detection()
