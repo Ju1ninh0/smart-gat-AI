@@ -1,0 +1,3 @@
+app/dashboard/templates/cameras.html linguist-vendored
+app/dashboard/templates/vehicles.html linguist-vendored
+app/dashboard/templates/plates.html linguist-vendored
