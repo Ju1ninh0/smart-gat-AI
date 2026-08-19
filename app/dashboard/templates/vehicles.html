@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Veículos | Smart-GAT AI</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #0b0f14;
+            color: white;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            background: #11161d;
+            padding: 25px 15px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid #202832;
+        }
+
+        .logo {
+            font-size: 23px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            padding-left: 10px;
+        }
+
+        .logo span {
+            color: #00aaff;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .menu a {
+            text-decoration: none;
+            color: #9aa4af;
+            padding: 13px 15px;
+            border-radius: 8px;
+            transition: 0.2s;
+        }
+
+        .menu a:hover {
+            background: #18212b;
+            color: white;
+        }
+
+        .menu .active {
+            background: #0066ff;
+            color: white;
+        }
+
+        .content {
+            margin-left: 240px;
+            padding: 30px;
+            width: calc(100% - 240px);
+        }
+
+        .header {
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 30px;
+        }
+
+        .header p {
+            color: #7f8a96;
+            margin-top: 7px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat {
+            background: #11161d;
+            border: 1px solid #202832;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-title {
+            color: #7f8a96;
+            font-size: 13px;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+
+        .table-container {
+            background: #11161d;
+            border: 1px solid #202832;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            color: #7f8a96;
+            font-size: 13px;
+            padding: 17px;
+            background: #0e1319;
+        }
+
+        td {
+            padding: 17px;
+            border-top: 1px solid #202832;
+            color: #dce2e8;
+        }
+
+        tr:hover td {
+            background: #151c24;
+        }
+
+        .vehicle-id {
+            color: #00aaff;
+            font-weight: bold;
+        }
+
+        .plate {
+            display: inline-block;
+            background: #e8edf2;
+            color: #11161d;
+            padding: 6px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .without-plate {
+            color: #697582;
+        }
+
+        .confidence {
+            color: #00d084;
+            font-weight: bold;
+        }
+
+        .detections {
+            color: #00aaff;
+            font-weight: bold;
+        }
+
+        .empty {
+            text-align: center;
+            padding: 50px;
+            color: #697582;
+        }
+
+        @media (max-width: 1100px) {
+            .stats {
+                grid-template-columns: 1fr;
+            }
+
+            .table-container {
+                overflow-x: auto;
+            }
+        }
+
+        @media (max-width: 800px) {
+            .sidebar {
+                width: 190px;
+            }
+
+            .content {
+                margin-left: 190px;
+                width: calc(100% - 190px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="logo">
+        Smart-<span>GAT</span> AI
+    </div>
+
+    <nav class="menu">
+
+        <a href="/">
+            📊 Dashboard
+        </a>
+
+        <a href="/cameras">
+            📹 Câmeras
+        </a>
+
+        <a href="/vehicles" class="active">
+            🚗 Veículos
+        </a>
+
+        <a href="/plates">
+            🪪 Placas
+        </a>
+
+    </nav>
+
+</aside>
+
+
+<main class="content">
+
+    <div class="header">
+
+        <h1>Veículos</h1>
+
+        <p>
+            Veículos rastreados pelo Smart-GAT AI
+        </p>
+
+    </div>
+
+
+    <section class="stats">
+
+        <div class="stat">
+
+            <div class="stat-title">
+                Veículos rastreados
+            </div>
+
+            <div class="stat-value">
+                {{ vehicles|length }}
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-title">
+                Com placa identificada
+            </div>
+
+            <div class="stat-value">
+
+                {{ vehicles
+                   |selectattr("plate")
+                   |list
+                   |length }}
+
+            </div>
+
+        </div>
+
+
+        <div class="stat">
+
+            <div class="stat-title">
+                Detecções totais
+            </div>
+
+            <div class="stat-value">
+
+                {{ vehicles
+                   |sum(attribute="detections") }}
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <section class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>ID</th>
+                    <th>Tipo</th>
+                    <th>Placa</th>
+                    <th>Confiança</th>
+                    <th>Câmera</th>
+                    <th>Primeira vez</th>
+                    <th>Última vez</th>
+                    <th>Detecções</th>
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for vehicle in vehicles %}
+
+                <tr>
+
+                    <td class="vehicle-id">
+                        #{{ vehicle["tracking_id"] }}
+                    </td>
+
+                    <td>
+                        {{ vehicle["vehicle_type"] }}
+                    </td>
+
+                    <td>
+
+                        {% if vehicle["plate"] %}
+
+                            <span class="plate">
+                                {{ vehicle["plate"] }}
+                            </span>
+
+                        {% else %}
+
+                            <span class="without-plate">
+                                Não identificada
+                            </span>
+
+                        {% endif %}
+
+                    </td>
+
+                    <td class="confidence">
+
+                        {{ "%.1f"|format(
+                            vehicle["confidence"] * 100
+                        ) }}%
+
+                    </td>
+
+                    <td>
+                        {{ vehicle["camera"] }}
+                    </td>
+
+                    <td>
+                        {{ vehicle["first_seen"] }}
+                    </td>
+
+                    <td>
+                        {{ vehicle["last_seen"] }}
+                    </td>
+
+                    <td class="detections">
+                        {{ vehicle["detections"] }}
+                    </td>
+
+                </tr>
+
+                {% else %}
+
+                <tr>
+
+                    <td colspan="8" class="empty">
+                        Nenhum veículo detectado ainda.
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </section>
+
+</main>
+
+</body>
+</html>

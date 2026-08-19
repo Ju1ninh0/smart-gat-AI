@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Câmeras | Smart-GAT AI</title>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #0b0f14;
+            color: white;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            background: #11161d;
+            padding: 25px 15px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid #202832;
+        }
+
+        .logo {
+            font-size: 23px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            padding-left: 10px;
+        }
+
+        .logo span {
+            color: #00aaff;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .menu a {
+            text-decoration: none;
+            color: #9aa4af;
+            padding: 13px 15px;
+            border-radius: 8px;
+        }
+
+        .menu a:hover {
+            background: #18212b;
+            color: white;
+        }
+
+        .menu .active {
+            background: #0066ff;
+            color: white;
+        }
+
+        .content {
+            margin-left: 240px;
+            padding: 30px;
+            width: calc(100% - 240px);
+        }
+
+        .header {
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 30px;
+        }
+
+        .header p {
+            color: #7f8a96;
+            margin-top: 7px;
+        }
+
+        .cameras {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .camera {
+            background: #11161d;
+            border: 1px solid #202832;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .camera-header {
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #202832;
+        }
+
+        .camera-name {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status {
+            color: #00d084;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00d084;
+        }
+
+        .screen {
+            height: 230px;
+            background: #05070a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4f5b68;
+            font-size: 15px;
+        }
+
+        .camera-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid #202832;
+        }
+
+        .info {
+            padding: 16px;
+            text-align: center;
+            border-right: 1px solid #202832;
+        }
+
+        .info:last-child {
+            border-right: none;
+        }
+
+        .info-title {
+            color: #7f8a96;
+            font-size: 12px;
+            margin-bottom: 7px;
+        }
+
+        .info-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .last {
+            padding: 14px 20px;
+            border-top: 1px solid #202832;
+            color: #697582;
+            font-size: 12px;
+        }
+
+        .empty {
+            background: #11161d;
+            border: 1px solid #202832;
+            border-radius: 12px;
+            padding: 60px;
+            text-align: center;
+            color: #697582;
+        }
+
+        @media (max-width: 900px) {
+            .cameras {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .sidebar {
+                width: 190px;
+            }
+
+            .content {
+                margin-left: 190px;
+                width: calc(100% - 190px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="logo">
+        Smart-<span>GAT</span> AI
+    </div>
+
+    <nav class="menu">
+
+        <a href="/">
+            📊 Dashboard
+        </a>
+
+        <a href="/cameras" class="active">
+            📹 Câmeras
+        </a>
+
+        <a href="/vehicles">
+            🚗 Veículos
+        </a>
+
+        <a href="/plates">
+            🪪 Placas
+        </a>
+
+    </nav>
+
+</aside>
+
+
+<main class="content">
+
+    <div class="header">
+
+        <h1>Câmeras</h1>
+
+        <p>
+            Monitoramento das fontes de vídeo do Smart-GAT AI
+        </p>
+
+    </div>
+
+
+    {% if cameras %}
+
+    <section class="cameras">
+
+        {% for camera in cameras %}
+
+        <article class="camera">
+
+            <div class="camera-header">
+
+                <div class="camera-name">
+                    📹 {{ camera["camera"] }}
+                </div>
+
+                <div class="status">
+                    <span class="status-dot"></span>
+                    Ativa
+                </div>
+
+            </div>
+
+
+            <div class="screen">
+                🎥 Vídeo aguardando transmissão
+            </div>
+
+
+            <div class="camera-info">
+
+                <div class="info">
+
+                    <div class="info-title">
+                        DETECÇÕES
+                    </div>
+
+                    <div class="info-value">
+                        {{ camera["detections"] }}
+                    </div>
+
+                </div>
+
+
+                <div class="info">
+
+                    <div class="info-title">
+                        VEÍCULOS
+                    </div>
+
+                    <div class="info-value">
+                        {{ camera["vehicles"] }}
+                    </div>
+
+                </div>
+
+
+                <div class="info">
+
+                    <div class="info-title">
+                        PLACAS
+                    </div>
+
+                    <div class="info-value">
+                        {{ camera["plates"] }}
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="last">
+
+                Última detecção:
+                {{ camera["last_detection"] }}
+
+            </div>
+
+        </article>
+
+        {% endfor %}
+
+    </section>
+
+    {% else %}
+
+    <div class="empty">
+
+        📹
+
+        <br><br>
+
+        Nenhuma câmera possui detecções ainda.
+
+        <br>
+
+        Inicie o Smart-GAT para começar o monitoramento.
+
+    </div>
+
+    {% endif %}
+
+</main>
+
+</body>
+</html>

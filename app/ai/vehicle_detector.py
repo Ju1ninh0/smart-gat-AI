@@ -1,20 +1,37 @@
-import easyocr
-from ultralytics import YOLO
+from app.dashboard.video_stream import update_frame
+
+import time
 import cv2
-import sqlite3
-from datetime import datetime
-from pathlib import Path
+import easyocr
 import re
 
+from pathlib import Path
+from ultralytics import YOLO
 
-MODEL_PATH = "runs/detect/train-5/weights/best.pt"
-VIDEO_PATH = "video/video5.mp4"
-DB_PATH = "data/smart_gat.db"
+from app.dashboard.database import (
+    criar_banco,
+    adicionar_deteccao
+)
+
+
+BASE_DIR = Path(__file__).resolve().parents[2]
+
+MODEL_PATH = BASE_DIR / "runs" / "detect" / "train-5" / "weights" / "best.pt"
+VIDEO_PATH = BASE_DIR / "video" / "video3.MOV"
+
+PLATES_DIR = BASE_DIR / "data" / "plates"
 
 CONFIDENCE = 0.30
+OCR_CONFIDENCE = 0.40
 YOLO_SIZE = 1280
 
-model = YOLO(MODEL_PATH)
+CAMERA_NAME = "Câmera 1"
+
+FRAMES_TO_CONFIRM = 3
+PLATE_COOLDOWN = 30
+
+
+model = YOLO(str(MODEL_PATH))
 
 ocr = easyocr.Reader(
     ["en"],
@@ -22,49 +39,13 @@ ocr = easyocr.Reader(
 )
 
 
-def init_database():
-    Path(DB_PATH).parent.mkdir(
-        parents=True,
-        exist_ok=True
-    )
-
-    connection = sqlite3.connect(DB_PATH)
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS detections (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            tracking_id INTEGER,
-            plate TEXT,
-            confidence REAL,
-            detected_at TEXT
-        )
-    """)
-
-    connection.commit()
-    connection.close()
-
-
-def save_detection(tracking_id, plate, confidence):
-    connection = sqlite3.connect(DB_PATH)
-    cursor = connection.cursor()
-
-    cursor.execute("""
-        INSERT INTO detections
-        (tracking_id, plate, confidence, detected_at)
-        VALUES (?, ?, ?, ?)
-    """, (
-        tracking_id,
-        plate,
-        confidence,
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    ))
-
-    connection.commit()
-    connection.close()
+tracked_vehicles = {}
+saved_vehicles = {}
+last_saved_plates = {}
 
 
 def preprocess_plate(image):
+
     if image is None or image.size == 0:
         return None
 
@@ -100,6 +81,7 @@ def preprocess_plate(image):
 
 
 def clean_plate(text):
+
     if not text:
         return None
 
@@ -111,30 +93,33 @@ def clean_plate(text):
         text
     )
 
-    replacements = {
-        "O": "0",
-        "I": "1",
-        "L": "1"
-    }
-
-    text = "".join(
-        replacements.get(char, char)
-        for char in text
-    )
-
-    if len(text) < 4:
+    if len(text) < 7:
         return None
 
-    return text
+    if len(text) > 8:
+        return None
+
+    old_pattern = r"^[A-Z]{3}[0-9]{4}$"
+    mercosul_pattern = r"^[A-Z]{3}[0-9][A-Z][0-9]{2}$"
+
+    if re.match(old_pattern, text):
+        return text
+
+    if re.match(mercosul_pattern, text):
+        return text
+
+    return None
 
 
 def read_plate(image):
+
     processed = preprocess_plate(image)
 
     if processed is None:
-        return None
+        return None, 0.0
 
     try:
+
         results = ocr.readtext(
             processed,
             detail=1,
@@ -142,38 +127,154 @@ def read_plate(image):
             allowlist="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
         )
 
-        texts = []
+        best_plate = None
+        best_score = 0.0
 
         for _, text, score in results:
 
-            if float(score) >= 0.40:
-                texts.append(text)
+            score = float(score)
 
-        if not texts:
-            return None
+            if score < OCR_CONFIDENCE:
+                continue
 
-        plate = "".join(texts)
+            plate = clean_plate(text)
 
-        return clean_plate(
-            plate
-        )
+            if plate and score > best_score:
+
+                best_plate = plate
+                best_score = score
+
+        return best_plate, best_score
 
     except Exception as error:
 
         print(
-            "Erro no OCR:",
+            "[OCR] Erro:",
             error
         )
 
+        return None, 0.0
+
+
+def save_plate_image(
+    plate,
+    image,
+    tracking_id
+):
+
+    if image is None or image.size == 0:
         return None
+
+    PLATES_DIR.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    safe_plate = re.sub(
+        r"[^A-Z0-9]",
+        "",
+        plate
+    )
+
+    filename = (
+        f"{safe_plate}_"
+        f"ID{tracking_id}_"
+        f"{cv2.getTickCount()}.jpg"
+    )
+
+    path = PLATES_DIR / filename
+
+    cv2.imwrite(
+        str(path),
+        image
+    )
+
+    return str(
+        path.relative_to(BASE_DIR)
+    )
+
+
+def register_detection(
+    tracking_id,
+    plate,
+    ocr_confidence,
+    plate_crop
+):
+
+    current_time = time.time()
+
+    if tracking_id in saved_vehicles:
+        return False
+
+    last_time = last_saved_plates.get(plate)
+
+    if last_time is not None:
+
+        if current_time - last_time < PLATE_COOLDOWN:
+            return False
+
+    image_path = save_plate_image(
+        plate,
+        plate_crop,
+        tracking_id
+    )
+
+    adicionar_deteccao(
+        tracking_id=tracking_id,
+        vehicle_type="Veículo",
+        plate=plate,
+        confidence=ocr_confidence,
+        camera=CAMERA_NAME
+    )
+
+    saved_vehicles[tracking_id] = {
+        "plate": plate,
+        "confidence": ocr_confidence,
+        "image": image_path
+    }
+
+    last_saved_plates[plate] = current_time
+
+    print(
+        f"[PLACA CONFIRMADA] "
+        f"ID={tracking_id} "
+        f"PLACA={plate} "
+        f"OCR={ocr_confidence:.2f}"
+    )
+
+    return True
 
 
 def start_detection():
 
-    init_database()
+    criar_banco()
+
+    if not MODEL_PATH.exists():
+
+        print(
+            "Modelo não encontrado:"
+        )
+
+        print(
+            MODEL_PATH
+        )
+
+        return
+
+    if not VIDEO_PATH.exists():
+
+        print(
+            "Vídeo não encontrado:"
+        )
+
+        print(
+            VIDEO_PATH
+        )
+
+        return
 
     video = cv2.VideoCapture(
-        VIDEO_PATH
+        str(VIDEO_PATH)
     )
 
     if not video.isOpened():
@@ -195,10 +296,14 @@ def start_detection():
     print("================================")
     print("Modelo:", MODEL_PATH)
     print("Vídeo:", VIDEO_PATH)
-    print("Confiança:", CONFIDENCE)
-    print("Resolução YOLO:", YOLO_SIZE)
+    print("Confiança YOLO:", CONFIDENCE)
+    print("Confiança OCR:", OCR_CONFIDENCE)
+    print("Resolução:", YOLO_SIZE)
     print("OCR: EasyOCR")
     print("GPU OCR: ativada")
+    print("Câmera:", CAMERA_NAME)
+    print("Cooldown:", PLATE_COOLDOWN, "segundos")
+    print("Dashboard: ativo")
     print("================================")
 
     while True:
@@ -279,24 +384,57 @@ def start_detection():
                     x1:x2
                 ]
 
-                plate_text = read_plate(
+                plate_text, ocr_confidence = read_plate(
                     plate_crop
                 )
 
-                detection_count += 1
+                if tracking_id not in tracked_vehicles:
 
-                print(
-                    f"[DETECÇÃO #{detection_count}] "
-                    f"ID={tracking_id} "
-                    f"Confiança={confidence:.3f} "
-                    f"Placa={plate_text}"
-                )
+                    tracked_vehicles[tracking_id] = {
+                        "plate": None,
+                        "confidence": 0.0,
+                        "frames": 0,
+                        "crop": None
+                    }
 
-                save_detection(
-                    tracking_id,
-                    plate_text,
-                    confidence
-                )
+                vehicle = tracked_vehicles[
+                    tracking_id
+                ]
+
+                if plate_text:
+
+                    vehicle["frames"] += 1
+
+                    if (
+                        ocr_confidence
+                        >
+                        vehicle["confidence"]
+                    ):
+
+                        vehicle["plate"] = plate_text
+
+                        vehicle["confidence"] = (
+                            ocr_confidence
+                        )
+
+                        vehicle["crop"] = (
+                            plate_crop.copy()
+                        )
+
+                if (
+                    vehicle["plate"]
+                    and vehicle["frames"]
+                    >= FRAMES_TO_CONFIRM
+                ):
+
+                    if register_detection(
+                        tracking_id,
+                        vehicle["plate"],
+                        vehicle["confidence"],
+                        vehicle["crop"]
+                    ):
+
+                        detection_count += 1
 
                 cv2.rectangle(
                     frame,
@@ -307,14 +445,14 @@ def start_detection():
                 )
 
                 label = (
-                    f"ID: {tracking_id} | "
-                    f"{confidence:.2f}"
+                    f"ID: {tracking_id} "
+                    f"| YOLO: {confidence:.2f}"
                 )
 
-                if plate_text:
+                if vehicle["plate"]:
 
                     label += (
-                        f" | {plate_text}"
+                        f" | {vehicle['plate']}"
                     )
 
                 cv2.putText(
@@ -332,6 +470,8 @@ def start_detection():
                     (0, 255, 0),
                     2
                 )
+
+        update_frame(frame)
 
         cv2.imshow(
             "Smart GAT - Tracking",
@@ -355,7 +495,7 @@ def start_detection():
     print()
     print("================================")
     print(
-        "TOTAL DE DETECÇÕES:",
+        "PLACAS CONFIRMADAS:",
         detection_count
     )
     print("================================")

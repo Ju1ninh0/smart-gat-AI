@@ -1,27 +1,44 @@
+### Ambiente Python
 .venv/
 .venv*/
 __pycache__/
 *.pyc
 
+### IDE
 .idea/
 .vscode/
 
+### Banco de dados
 *.db
 *.sqlite
 *.sqlite3
 
+### Dados e datasets
+data/
+dataset/
 datasets/
 datasets_original/
 
+### Modelos e resultados YOLO
 runs/
 *.pt
 *.pth
 *.onnx
 
+### Vídeos
 video/
 *.mp4
 *.avi
 *.mov
 *.mkv
 
+### Imagens geradas/testes
+*.jpg
+*.jpeg
+*.png
+
+### Logs
 *.log
+
+### Variáveis de ambiente
+.env

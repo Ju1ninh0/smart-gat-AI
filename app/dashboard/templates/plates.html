@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Placas - Smart-GAT AI</title>
+
+    <style>
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background: #0b0f14;
+            color: white;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            background: #11161d;
+            padding: 25px 15px;
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-right: 1px solid #202832;
+        }
+
+        .logo {
+            font-size: 23px;
+            font-weight: bold;
+            margin-bottom: 40px;
+            padding-left: 10px;
+        }
+
+        .logo span {
+            color: #00aaff;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .menu a {
+            text-decoration: none;
+            color: #9aa4af;
+            padding: 13px 15px;
+            border-radius: 8px;
+        }
+
+        .menu a:hover {
+            background: #18212b;
+            color: white;
+        }
+
+        .menu .active {
+            background: #0066ff;
+            color: white;
+        }
+
+        .content {
+            margin-left: 240px;
+            padding: 30px;
+            width: calc(100% - 240px);
+        }
+
+        .header {
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 30px;
+        }
+
+        .header p {
+            color: #7f8a96;
+            margin-top: 7px;
+        }
+
+        .table-container {
+            background: #11161d;
+            border: 1px solid #202832;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 18px;
+            background: #151b23;
+            color: #8c98a5;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 18px;
+            border-top: 1px solid #202832;
+        }
+
+        tr:hover {
+            background: #151b23;
+        }
+
+        .plate {
+            display: inline-block;
+            background: #f2f2f2;
+            color: #111;
+            border-radius: 6px;
+            padding: 8px 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            font-size: 16px;
+            min-width: 110px;
+            text-align: center;
+        }
+
+        .confidence {
+            color: #00d084;
+            font-weight: bold;
+        }
+
+        .empty {
+            padding: 50px;
+            text-align: center;
+            color: #697581;
+        }
+
+        .status {
+            margin-bottom: 20px;
+            color: #00d084;
+            font-size: 14px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<aside class="sidebar">
+
+    <div class="logo">
+        Smart-<span>GAT</span> AI
+    </div>
+
+    <nav class="menu">
+
+        <a href="/">
+            📊 Dashboard
+        </a>
+
+        <a href="/cameras">
+            📹 Câmeras
+        </a>
+
+        <a href="/vehicles">
+            🚗 Veículos
+        </a>
+
+        <a href="/plates" class="active">
+            🪪 Placas
+        </a>
+
+    </nav>
+
+</aside>
+
+
+<main class="content">
+
+    <div class="header">
+
+        <h1>Placas detectadas</h1>
+
+        <p>
+            Sistema de reconhecimento automático de placas
+        </p>
+
+    </div>
+
+    <div class="status">
+        ● OCR conectado — atualizando automaticamente
+    </div>
+
+    <div class="table-container">
+
+        <table>
+
+            <thead>
+
+                <tr>
+                    <th>Placa</th>
+                    <th>ID Veículo</th>
+                    <th>Confiança OCR</th>
+                    <th>Câmera</th>
+                    <th>Data / Hora</th>
+                </tr>
+
+            </thead>
+
+            <tbody id="platesTable">
+
+                {% for detection in detections %}
+
+                    {% if detection[3] %}
+
+                    <tr>
+
+                        <td>
+                            <span class="plate">
+                                {{ detection[3] }}
+                            </span>
+                        </td>
+
+                        <td>
+                            #{{ detection[1] }}
+                        </td>
+
+                        <td class="confidence">
+                            {{ "%.0f"|format(detection[4] * 100) }}%
+                        </td>
+
+                        <td>
+                            {{ detection[5] }}
+                        </td>
+
+                        <td>
+                            {{ detection[6] }}
+                        </td>
+
+                    </tr>
+
+                    {% endif %}
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+        {% if not detections %}
+
+        <div class="empty">
+            Nenhuma placa detectada ainda.
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</main>
+
+
+<script>
+
+async function atualizarPlacas() {
+
+    try {
+
+        const response = await fetch("/api/detections");
+
+        const detections = await response.json();
+
+        const table = document.getElementById("platesTable");
+
+        table.innerHTML = "";
+
+        let encontrou = false;
+
+        detections.forEach(detection => {
+
+            if (!detection.plate) {
+                return;
+            }
+
+            encontrou = true;
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>
+                    <span class="plate">
+                        ${detection.plate}
+                    </span>
+                </td>
+
+                <td>
+                    #${detection.tracking_id}
+                </td>
+
+                <td class="confidence">
+                    ${(detection.confidence * 100).toFixed(0)}%
+                </td>
+
+                <td>
+                    ${detection.camera}
+                </td>
+
+                <td>
+                    ${detection.detected_at}
+                </td>
+            `;
+
+            table.appendChild(row);
+
+        });
+
+    } catch (error) {
+
+        console.error(
+            "Erro ao atualizar placas:",
+            error
+        );
+
+    }
+
+}
+
+atualizarPlacas();
+
+setInterval(
+    atualizarPlacas,
+    1000
+);
+
+</script>
+
+</body>
+
+</html>
