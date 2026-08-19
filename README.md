@@ -1,88 +1,118 @@
-# 🚗 Smart GAT
+# Smart GAT
 
-> Sistema inteligente de detecção, rastreamento e reconhecimento de placas veiculares utilizando Inteligência Artificial e Visão Computacional.
+Sistema de visão computacional para detecção, rastreamento e reconhecimento de placas veiculares utilizando Inteligência Artificial.
 
-## 📌 Sobre o projeto
+## Sobre
 
-O **Smart GAT** é um projeto de visão computacional desenvolvido para detectar veículos e placas em vídeos, realizar o reconhecimento dos caracteres da placa e acompanhar os objetos detectados através de **tracking**.
+O **Smart GAT** é um sistema de visão computacional desenvolvido em Python para detecção e monitoramento de veículos e placas.
 
-O projeto combina **YOLO**, **OpenCV** e **EasyOCR**, criando uma base para um futuro sistema de monitoramento veicular inteligente.
+O projeto combina **YOLO11, OpenCV, ByteTrack e EasyOCR** com uma aplicação web desenvolvida em **Flask**, permitindo processar vídeos, rastrear veículos, reconhecer placas e visualizar os dados através de um dashboard.
 
-## 🧠 Tecnologias
+## Tecnologias
 
-* 🐍 Python
-* 🤖 YOLO11
-* 👁️ OpenCV
-* 🔤 EasyOCR
-* 📦 Ultralytics
-* 🎯 ByteTrack
-* 🧠 PyTorch
+* Python
+* YOLO11
+* Ultralytics
+* OpenCV
+* EasyOCR
+* ByteTrack
+* PyTorch
+* Flask
+* SQLite
 
-## ⚙️ Funcionamento
-
-O fluxo principal do Smart GAT é:
-
-```text
-📹 Vídeo / Câmera
-       ↓
-   OpenCV
-       ↓
-     YOLO
-       ↓
- Detecção da placa
-       ↓
-    Tracking
-       ↓
- Recorte da placa
-       ↓
-    EasyOCR
-       ↓
- Reconhecimento do texto
-```
-
-## 🚘 Funcionalidades
-
-### Detecção de placas
-
-O modelo YOLO é treinado especificamente para localizar placas veiculares.
-
-### 🔤 Reconhecimento de placas
-
-Após a detecção, a região da placa é recortada e enviada para o **EasyOCR**, que tenta identificar os caracteres.
-
-### 🎯 Rastreamento
-
-O Smart GAT utiliza tracking para acompanhar objetos detectados entre os frames.
-
-Cada objeto pode receber um identificador:
+## Pipeline
 
 ```text
-ID: 1
-ID: 2
-ID: 3
+Vídeo / Câmera
+      ↓
+    OpenCV
+      ↓
+    YOLO11
+      ↓
+Detecção de veículos
+      ↓
+   ByteTrack
+      ↓
+ Rastreamento
+      ↓
+Detecção da placa
+      ↓
+   EasyOCR
+      ↓
+Reconhecimento
+      ↓
+ Banco de dados
+      ↓
+ Dashboard
 ```
 
-Isso permite acompanhar o mesmo veículo durante sua movimentação no vídeo.
+## Funcionalidades
 
-### 🎥 Processamento de vídeo
+### Visão Computacional
 
-O sistema pode processar arquivos de vídeo utilizando OpenCV e possui estrutura para futuramente trabalhar com câmeras em tempo real.
+* [x] Detecção de veículos
+* [x] Detecção de placas
+* [x] Rastreamento de veículos
+* [x] Identificação por ID
+* [x] Reconhecimento de placas com OCR
+* [x] Processamento de vídeos
+* [x] Exibição das detecções no vídeo
+* [x] Registro das informações detectadas
 
-## 📂 Estrutura do projeto
+### Dashboard
+
+* [x] Dashboard web com Flask
+* [x] Monitoramento de veículos
+* [x] Visualização de placas reconhecidas
+* [x] Gerenciamento de câmeras
+* [x] Página de veículos
+* [x] Página de placas
+* [x] Página de câmeras
+* [x] Estatísticas de monitoramento
+* [x] Interface web responsiva
+* [x] Navegação entre módulos
+
+### Dados
+
+* [x] Armazenamento das detecções
+* [x] Registro de veículos
+* [x] Registro de placas
+* [x] Registro de câmeras
+* [x] Histórico de informações
+* [x] Integração com banco de dados
+
+### Em desenvolvimento
+
+* [ ] Melhorar precisão do OCR
+* [ ] PostgreSQL
+* [ ] Sistema de alertas
+* [ ] Contagem de veículos
+* [ ] Detecção de entrada e saída
+* [ ] Suporte a câmeras IP / RTSP
+* [ ] Análise de características dos veículos
+* [ ] Monitoramento em tempo real
+* [ ] Deploy em servidor
+
+## Estrutura
 
 ```text
 smart-gat-AI/
 │
 ├── app/
-│   └── ai/
-│       └── vehicle_detector.py
+│   ├── ai/
+│   │   └── vehicle_detector.py
+│   │
+│   └── dashboard/
+│       ├── app.py
+│       ├── templates/
+│       │   ├── dashboard.html
+│       │   ├── cameras.html
+│       │   ├── plates.html
+│       │   └── vehicles.html
+│       └── static/
 │
+├── data/
 ├── dataset/
-│   ├── train/
-│   ├── valid/
-│   ├── test/
-│   └── data.yaml
-│
 ├── video/
 │
 ├── main.py
@@ -92,113 +122,71 @@ smart-gat-AI/
 └── README.md
 ```
 
-## 🏋️ Treinamento
+## Treinamento
 
-O modelo foi treinado utilizando um dataset de placas veiculares.
-
-Exemplo de treinamento:
+O modelo YOLO11 foi treinado utilizando um dataset específico para detecção de placas veiculares.
 
 ```bash
 yolo detect train model=yolo11s.pt data=dataset/data.yaml epochs=150 imgsz=832 batch=8
 ```
 
-Após o treinamento, o modelo gera os pesos em:
-
-```text
-runs/detect/train/weights/
-```
-
-O principal arquivo utilizado pelo sistema é:
+O peso principal utilizado para inferência é:
 
 ```text
 best.pt
 ```
 
-> ⚠️ Os pesos do modelo e os resultados de treinamento não devem ser enviados ao GitHub caso sejam arquivos grandes. Mantenha-os no `.gitignore` ou utilize um sistema apropriado de armazenamento de modelos.
-
-## ▶️ Como executar
-
-### 1. Clone o projeto
+## Instalação
 
 ```bash
 git clone https://github.com/Ju1ninh0/smart-gat-AI.git
 cd smart-gat-AI
 ```
 
-### 2. Crie um ambiente virtual
+Crie o ambiente virtual:
 
-Windows:
-
-```powershell
+```bash
 python -m venv .venv
 ```
 
-### 3. Ative o ambiente
+Windows:
 
 ```powershell
 .venv\Scripts\activate
 ```
 
-### 4. Instale as dependências
+Instale as dependências:
 
-```powershell
+```bash
 pip install -r requirements.txt
 ```
 
-### 5. Execute
+Execute:
 
-```powershell
+```bash
 python main.py
 ```
 
-## 📊 Exemplo
+Para iniciar o dashboard:
 
-O sistema pode apresentar informações como:
-
-```text
-ID: 1
-Placa: ABC1D23
-Confiança: 0.94
+```bash
+python app/dashboard/app.py
 ```
 
-Além de desenhar a região detectada diretamente no vídeo.
+O dashboard estará disponível localmente em:
 
-## 🚀 Próximos passos
+```text
+http://127.0.0.1:5000
+```
 
-O Smart GAT está em desenvolvimento. Algumas das próximas evoluções planejadas são:
+## Objetivo
 
-* [x] Detecção de placas
-* [x] Reconhecimento com OCR
-* [x] Processamento de vídeo
-* [x] Tracking de objetos
-* [ ] Melhorar precisão do OCR
-* [ ] Histórico de placas reconhecidas
-* [ ] Banco de dados PostgreSQL
-* [ ] Dashboard web
-* [ ] Sistema de alertas
-* [ ] Contagem de veículos
-* [ ] Detecção de entrada e saída
-* [ ] Suporte a câmeras IP/RTSP
-* [ ] Análise de características do veículo
-* [ ] Deploy em servidor
-* [ ] Monitoramento em tempo real
+O objetivo do Smart GAT é evoluir de um protótipo de visão computacional para uma plataforma completa de **monitoramento e análise inteligente de veículos**.
 
-## 🎯 Objetivo
+A arquitetura combina inteligência artificial, processamento de imagens, OCR, tracking, banco de dados e uma interface web para centralizar as informações coletadas.
 
-O objetivo do Smart GAT é evoluir de um protótipo de visão computacional para uma plataforma completa de **monitoramento e análise inteligente de veículos**, combinando Inteligência Artificial, processamento de imagens, OCR, rastreamento e análise de dados.
-
-## 👨‍💻 Desenvolvedor
+## Autor
 
 **Ju1ninh0**
 
-Estudante de Ciência da Computação interessado em:
-
-* 🤖 Inteligência Artificial
-* 🐍 Python
-* 💻 Desenvolvimento de Software
-* 🔐 Cybersecurity
-* 👁️ Visão Computacional
-
----
-
-⭐ Se o projeto for útil ou interessante, deixe uma estrela no repositório!
+⭐ Se o projeto for interessante, considere deixar uma estrela no repositório.
